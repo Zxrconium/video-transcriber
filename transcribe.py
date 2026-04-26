@@ -34,7 +34,14 @@ def transcribe(audio_path: str, model_size: str, language: str | None) -> str:
     if language:
         kwargs["language"] = language
 
-    segments, info = model.transcribe(audio_path, beam_size=5, **kwargs)
+    segments, info = model.transcribe(
+        audio_path,
+        beam_size=5,
+        vad_filter=True,
+        condition_on_previous_text=False,
+        temperature=0,
+        **kwargs,
+    )
 
     print(
         f"Detected language '{info.language}' with probability {info.language_probability:.2f}",
