@@ -25,25 +25,54 @@ def extract_audio(video_path: str, audio_path: str) -> None:
 
 
 def transcribe(audio_path: str, model_size: str, language: str | None) -> str:
-    from faster_whisper import WhisperModel
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        print(
+            "Error: faster-whisper is not installed.\n"
+            "Run: pip install faster-whisper",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(f"Loading Whisper model '{model_size}'...", file=sys.stderr)
-    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    try:
+        model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    except Exception as e:
+        print(f"Error loading model: {e}", file=sys.stderr)
+        sys.exit(1)
 
     kwargs = {}
     if language:
         kwargs["language"] = language
 
-    segments, info = model.transcribe(audio_path, beam_size=5, **kwargs)
+    print("Transcribing...", file=sys.stderr)
+    try:
+        segments, info = model.transcribe(audio_path, beam_size=5, **kwargs)
 
-    print(
-        f"Detected language '{info.language}' with probability {info.language_probability:.2f}",
-        file=sys.stderr,
-    )
+        print(
+            f"Detected language '{info.language}' with probability {info.language_probability:.2f}",
+            file=sys.stderr,
+        )
 
-    parts = []
-    for segment in segments:
-        parts.append(segment.text.strip())
+        parts = []
+        for segment in segments:
+            text = segment.text.strip()
+            if text:
+                parts.append(text)
+                print(f"  [{segment.start:.1f}s → {segment.end:.1f}s] {text}", file=sys.stderr)
+
+    except Exception as e:
+        print(f"Error during transcription: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not parts:
+        print(
+            "Warning: no speech detected. The audio may be silent, too noisy, or in an "
+            "unsupported language. Try a larger model (e.g. -m small) or force a language "
+            "with -l en.",
+            file=sys.stderr,
+        )
 
     return " ".join(parts)
 
@@ -90,7 +119,8 @@ def main() -> None:
         Path(args.output).write_text(transcript + "\n", encoding="utf-8")
         print(f"Transcript saved to '{args.output}'", file=sys.stderr)
     else:
-        print(transcript)
+        if transcript:
+            print(transcript)
 
 
 if __name__ == "__main__":
