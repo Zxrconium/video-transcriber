@@ -6,7 +6,18 @@ import os
 import sys
 import tempfile
 import subprocess
+import warnings
 from pathlib import Path
+
+# Suppress HuggingFace Hub warnings that appear when no HF_TOKEN is set and on
+# Windows systems where symlinks require Developer Mode or administrator rights.
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+warnings.filterwarnings(
+    "ignore",
+    message=".*unauthenticated.*",
+    category=UserWarning,
+    module="huggingface_hub",
+)
 
 
 def extract_audio(video_path: str, audio_path: str) -> None:
